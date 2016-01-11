@@ -9,6 +9,7 @@ import os
 import xbmcplugin
 import xbmcgui
 import xbmcaddon
+from BeautifulSoup import BeautifulSoup as BS 
 
 addon = xbmcaddon.Addon()
 socket.setdefaulttimeout(30)
@@ -34,9 +35,9 @@ while (not os.path.exists(xbmc.translatePath("special://profile/addon_data/"+add
     addon.openSettings()
 
 def index():
-    #addDir(translation(30002), "", 'listLatest', icon)
-    #addDir(translation(30003), "", 'listShows', icon)
-    addDir(translation(30003), "", 'listVideosNew', icon)
+    addDir(translation(30002), "", 'listLatest', icon)
+    addDir(translation(30003), "", 'listShows', icon)
+    #addDir(translation(30003), "", 'listVideosNew', icon)
     #addDir(translation(30004), "", 'listShowsFavs', icon)
     xbmcplugin.endOfDirectory(pluginhandle)
     if forceViewMode:
@@ -44,21 +45,18 @@ def index():
 
 
 def listLatest():
-    content = getUrl(urlMain+"/video")
-    spl = content.split('<li class="story" data-vr-contentbox="vice-vbs-index-video')
-    for i in range(1, len(spl), 1):
-        entry = spl[i]
-        match = re.compile('<p>(.+?)</p>', re.DOTALL).findall(entry)
-        desc = match[0]
-        match = re.compile('<span>(.+?)</span>', re.DOTALL).findall(entry)
-        date = match[0]
-        match = re.compile('<h2>.+?>(.+?)<', re.DOTALL).findall(entry)
-        title = cleanTitle(match[0])
-        match = re.compile('href="(.+?)"', re.DOTALL).findall(entry)
-        url = urlMain+match[0]
-        match = re.compile('src="(.+?)"', re.DOTALL).findall(entry)
-        thumb = match[0].replace("_190x165.jpg","_669x375.jpg").replace(" ","%20")
-        addLink(title, url, 'playVideo', thumb, date+"\n"+desc)
+    content = getUrl(urlMain+"/videos")
+    soup = BS(content, convertEntities=BS.HTML_ENTITIES)
+    for article in soup.findAll("article"):
+        try:
+            desc = "" #article.find("div", {"class":"item-meta-information list"}).find("p", {"class":"item-description"}).find("a").text.strip()
+            date = article.find("div", {"class":"item-category-info"}).find("span", {"class":"publish-time"}).text.strip()
+            title = article.find("h2").find("a").text.strip()
+            url = urlMain+article.find("div", {"class":"image-container"}).find("a")["href"]
+            thumb = article.find("div", {"class":"image-container"}).find("img")["src"].replace("_190x165.jpg","_669x375.jpg").replace(" ","%20")
+            addLink(title, url, 'playVideo', thumb, date+"\n"+desc)
+        except:
+            print article
     xbmcplugin.endOfDirectory(pluginhandle)
     if forceViewMode:
         xbmc.executebuiltin('Container.SetViewMode('+viewMode+')')
@@ -84,20 +82,17 @@ def listVideosNew():
                                                                                                                             
 
 def listShows():
-    content = getUrl(urlMain+"/shows")
-    spl = content.split('<li class="story story-square">')
-    for i in range(1, len(spl), 1):
-        entry = spl[i]
-        match = re.compile('<a href="(.+?)">(.+?)</a>', re.DOTALL).findall(entry)
-        url = urlMain+match[0][0]
-        title = cleanTitle(match[0][1])
-        match = re.compile('src="(.+?)"', re.DOTALL).findall(entry)
-        thumb = match[0]
-        match = re.compile('<p>(.+?)</p>', re.DOTALL).findall(entry)
-        desc = ""
-        if match:
-            desc = match[0]
-        addShowDir(title, url, 'listVideos', thumb, desc)
+    content = getUrl(urlMain+"/videos")
+    soup = BS(content, convertEntities=BS.HTML_ENTITIES)
+    for article in soup.findAll("article"):
+        try:
+            desc = "" #article.find("div", {"class":"item-meta-information list"}).find("p", {"class":"item-description"}).find("a").text.strip()
+            title = article.find("h2").find("a").text.strip()
+            url = urlMain+article.find("div", {"class":"image-container"}).find("a")["href"]
+            thumb = article.find("div", {"class":"image-container"}).find("img")["src"].replace("_190x165.jpg","_669x375.jpg").replace(" ","%20")
+            addShowDir(title, url, 'listVideos', thumb, desc)
+        except:
+            print article
     xbmcplugin.endOfDirectory(pluginhandle)
 
 
